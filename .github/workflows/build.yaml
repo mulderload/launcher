@@ -53,7 +53,6 @@ jobs:
         uses: softprops/action-gh-release@v2.3.3
         with:
           tag_name: ${{ steps.generate_version.outputs.version }}
-          release_name: ${{ steps.generate_version.outputs.version }}
           files: publish/MulderLauncher.exe
 
 permissions:
