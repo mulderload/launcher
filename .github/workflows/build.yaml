@@ -1,0 +1,59 @@
+name: build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Generate Version
+        id: generate_version
+        shell: pwsh
+        run: |
+          $date = Get-Date -Format "yy.MM.dd"
+          git fetch --tags
+          $tags = git tag -l "$date.*"
+          Write-Host "Tags: $($tags -join ', ')"
+          if ($tags) {
+            $last = $tags | ForEach-Object { ($_ -split '\.')[-1] } | Sort-Object {[int]$_} -Descending | Select-Object -First 1
+            $next = [int]$last + 1
+          } else {
+            $next = 1
+          }
+          $version = "$date.$next"
+          Write-Host "Generated version: $version"
+          echo version=$version >> $env:GITHUB_OUTPUT
+
+      - name: Publish (framework-dependent, single file)
+        run: dotnet publish ./MulderLauncher.csproj `
+               -c Release `
+               -r win-x64 `
+               --self-contained false `
+               -p:PublishSingleFile=true `
+               -p:DebugType=none `
+               -p:Version=${{ steps.generate_version.outputs.version }} `
+               -o publish
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2.3.3
+        with:
+          tag_name: ${{ steps.generate_version.outputs.version }}
+          files: publish/MulderLauncher.exe
+
+permissions:
+  contents: write
