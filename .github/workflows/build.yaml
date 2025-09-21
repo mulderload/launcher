@@ -49,6 +49,13 @@ jobs:
                -p:Version=${{ steps.generate_version.outputs.version }} `
                -o publish
 
+      - name: Sign executable
+        shell: pwsh
+        run: |
+          [Byte[]] $bytes = [System.Convert]::FromBase64String("${{ secrets.CERTIFICATE_BASE64 }}")
+          [IO.File]::WriteAllBytes("mulderload.pfx", $bytes)
+          Start-Process "C:/Program Files (x86)/Microsoft SDKs/ClickOnce/SignTool/signtool.exe" "sign /f mulderload.pfx /p ${{ secrets.CERTIFICATE_PASSWORD }} /t http://timestamp.digicert.com /fd sha256 publish/MulderLauncher.exe" -PassThru -Wait
+
       - name: Create Release
         uses: softprops/action-gh-release@v2.3.3
         with:
